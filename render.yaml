@@ -25,6 +25,11 @@ services:
         value: '22'
       - key: HEARTH_DATA
         value: /var/hearth/calendar.json
+      # A real household starts with its own people, not the demo family. Drop
+      # this line (or set it to "on") before the first deploy if you'd rather
+      # land on sample data to click around.
+      - key: HEARTH_SEED
+        value: 'off'
       # The household passcode. Marked sync:false so it is never committed —
       # Render prompts for it when the blueprint is created.
       - key: HEARTH_PIN
