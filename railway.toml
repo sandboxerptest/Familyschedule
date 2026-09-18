@@ -1,0 +1,23 @@
+# Railway deployment — https://docs.railway.com/reference/config-as-code
+#
+# Railway runs a normal long-lived container, so Hearth needs no changes to
+# work here: the event stream that keeps the TV in sync stays open, and the
+# calendar is a file on an attached volume.
+#
+# Two things are set up in the dashboard rather than here, because Railway
+# does not take them from config:
+#   * a Volume mounted at /data  (Service → Settings → Volumes)
+#   * the HEARTH_PIN variable    (Service → Variables)
+
+[build]
+  builder = "NIXPACKS"
+
+[deploy]
+  startCommand = "node server/index.js"
+  healthcheckPath = "/api/health"
+  healthcheckTimeout = 30
+  restartPolicyType = "ON_FAILURE"
+  restartPolicyMaxRetries = 10
+  # One instance on purpose: the calendar is a single JSON file on the volume,
+  # and a second replica would quietly keep a second copy.
+  numReplicas = 1

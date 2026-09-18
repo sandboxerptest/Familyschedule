@@ -198,33 +198,39 @@ TLS is expected to be terminated by the platform or your reverse proxy; when it
 is, the session cookie is automatically marked `Secure` (Hearth reads
 `X-Forwarded-Proto`).
 
-### Render (what this repo is set up for)
+### Railway (what this repo is set up for)
 
-`render.yaml` in the repo root is a complete Blueprint. In the Render dashboard:
+Railway runs a normal long-lived container, which is what Hearth wants: the
+event stream that keeps the TV in step stays open, and the calendar is a file
+on an attached volume. `railway.toml` covers the build, the start command and
+the health check; two things have to be done in the dashboard because Railway
+does not read them from config.
 
-1. **New → Blueprint**, pick this repository, and let it read `render.yaml`.
-2. It will prompt for `HEARTH_PIN` — that's the household passcode everyone
-   types once per device. Anything you'd be happy saying out loud in the
-   kitchen; it is not protecting state secrets, but make it longer than four
-   digits if the URL is public.
-3. **Apply**. First deploy takes a couple of minutes, and the calendar lands at
-   `https://hearth-<something>.onrender.com`.
+1. **New Project → Deploy from GitHub repo**, and pick this repository.
+2. **Service → Settings → Volumes**: add a volume mounted at `/data`. Without
+   it the calendar is wiped on every deploy.
+3. **Service → Variables**:
 
-Worth knowing before you click:
+   | Variable | Value |
+   | --- | --- |
+   | `HEARTH_DATA` | `/data/calendar.json` |
+   | `HEARTH_PIN` | your household passcode |
+   | `HEARTH_SEED` | `off` — start with your own family, not the demo one |
 
-- **It isn't free.** The blueprint asks for a 1 GB disk, and Render can't mount
-  a disk on a free instance, so it specifies the `starter` plan (~$7/month plus
-  a few cents for the disk). Free instances also sleep, which is wrong for a
-  screen that is supposed to be glanceable at 7am.
-- **`region:` is set to `frankfurt`.** Change it in `render.yaml` if you're
-  closer to `oregon`, `ohio`, `virginia` or `singapore`.
-- **`branch:` is set explicitly.** If you rename or merge the branch, update
-  that line or Render will keep deploying the old one.
-- **One instance, on purpose.** The calendar is a single JSON file on the disk;
-  a second instance would quietly keep a second copy.
+4. **Settings → Networking → Generate Domain** for an HTTPS URL, or point a
+   custom domain at it. Railway terminates TLS and sets `X-Forwarded-Proto`, so
+   the session cookie is marked `Secure` automatically.
 
-Point a custom domain at it from the dashboard if you'd rather not read a
-`.onrender.com` address out to your family — Render issues the certificate.
+Leave app sleeping switched **off**. A kitchen display is the one thing that
+should never need waking up, and the TV holds an open connection anyway.
+
+Railway's CLI can do all of the above (`railway init`, `railway up`, and its
+variable and volume subcommands) — check `railway --help` for the flags your
+version uses, as they move between releases.
+
+Cost is usage-based on the Hobby plan ($5/month, which includes $5 of usage at
+the time of writing); a service this small plus a 1 GB volume normally sits
+inside that. Check their current pricing before you commit.
 
 ### Fly.io
 
@@ -234,6 +240,13 @@ fly volumes create hearth_data --size 1
 fly secrets set HEARTH_PIN=<passcode>
 fly deploy
 ```
+
+### Render
+
+`render.yaml` is a working Blueprint if you'd rather use Render: **New →
+Blueprint**, point it at this repo, set `HEARTH_PIN` when prompted. It asks for
+a 1 GB disk, and since Render can't mount a disk on a free instance the
+blueprint specifies the `starter` plan.
 
 ### Your own box
 
