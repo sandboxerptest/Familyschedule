@@ -78,6 +78,8 @@ a standalone app — it is a proper web app manifest with icons, not a bookmark.
 | `HOST` | `0.0.0.0` | Interface to bind |
 | `HEARTH_DATA` | `./data/calendar.json` | Where the calendar is stored |
 | `HEARTH_SEED` | on | Set to `off` to start with an empty calendar |
+| `HEARTH_PIN` | unset | Household passcode. Unset means no sign-in (home network only) |
+| `HEARTH_SECRET` | unset | Optional extra entropy for session signing |
 
 Everything else — family name, theme, week start, 24-hour clock, view rotation
 and weather — is in the editor's Settings tab, so nobody has to edit a config
@@ -157,6 +159,7 @@ losing the series. That covers a fridge calendar without an iCal engine.
 | `GET` `PATCH` | `/api/settings` | Display settings |
 | `GET` | `/api/weather` | Cached forecast, or `null` |
 | `GET` | `/api/stream` | Server-sent change events |
+| `GET` `POST` `DELETE` | `/api/session` | Passcode status, sign in, sign out |
 | `GET` | `/api/health` | Liveness probe |
 
 ## Tests
@@ -165,24 +168,65 @@ losing the series. That covers a fridge calendar without an iCal engine.
 npm test
 ```
 
-40 tests over the recurrence engine (intervals, weekday fan-out, month-end
+47 tests over the recurrence engine (intervals, weekday fan-out, month-end
 clamping, leap days, counts, exceptions, multi-day spans), the store
 (validation, atomic writes, migrations, series edits) and the HTTP API
-(including the live stream and path-traversal refusal). No test framework to
+(including the live stream and path-traversal refusal), plus the access gate
+(cookie flags, throttling, forged and expired sessions). No test framework to
 install — it's `node --test`.
 
-## Security note
+## Going live
 
-Hearth has no authentication, by design: it is meant for a home network, the way
-a printer is. Do not expose it to the public internet. If you need it reachable
-from outside the house, put it behind a VPN or an authenticating reverse proxy.
+On a home network Hearth needs no login, the same way a printer doesn't. The
+moment it is reachable from the internet that stops being true, so two things
+have to be true before you expose it:
+
+**1. Set a passcode.** `HEARTH_PIN=2468` turns on a shared household passcode.
+Everything is then closed until someone signs in — the API returns `401`, pages
+redirect to `/login`, and only the sign-in page, its assets and `/api/health`
+stay open. Signing in sets a signed, `HttpOnly`, year-long cookie, so the TV is
+asked once and never again; phones behave the same. Guesses are throttled to 8
+per client per 10 minutes, so a four-digit PIN can't be walked through by a
+script. Changing the passcode signs everybody out. There is a **Sign out of this
+device** button at the bottom of the editor's Settings tab.
+
+**2. Give it a real disk.** The calendar is a file. On a platform with an
+ephemeral filesystem it must be pointed at a mounted volume with `HEARTH_DATA`,
+or every deploy starts the family from scratch.
+
+TLS is expected to be terminated by the platform or your reverse proxy; when it
+is, the session cookie is automatically marked `Secure` (Hearth reads
+`X-Forwarded-Proto`).
+
+### Fly.io
+
+```bash
+fly launch --no-deploy --copy-config     # pick a name and a region
+fly volumes create hearth_data --size 1
+fly secrets set HEARTH_PIN=<passcode>
+fly deploy
+```
+
+### Render
+
+Point a Blueprint at `render.yaml`, then set `HEARTH_PIN` in the dashboard. The
+config asks for a 1 GB disk — Render's free instances can't mount one, so the
+starter plan is the floor for a calendar that remembers anything.
+
+### Your own box
+
+```bash
+HEARTH_PIN=<passcode> docker compose up -d
+```
+
+Behind Caddy or nginx, proxy to `127.0.0.1:4321` and let the proxy hold the
+certificate. A systemd unit is above if you'd rather skip Docker.
 
 ## Roadmap
 
 - Read-only iCal subscription feed (school and sports calendars)
 - A QR code on the TV that opens the editor on a phone
 - Chore rotation and a shared shopping list panel
-- Optional PIN on the editor for households with small "helpers"
 
 ## License
 

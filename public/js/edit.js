@@ -70,6 +70,7 @@ const state = {
   categories: [],
   palette: [],
   days: [],
+  authEnabled: false,
   from: todayKey(),
   draft: null,
   person: null,
@@ -95,13 +96,15 @@ async function boot() {
   });
 }
 
-function applyBootstrap({ settings, members, categories, palette }) {
+function applyBootstrap({ settings, members, categories, palette, authEnabled }) {
   state.settings = settings;
   state.members = members;
   state.memberMap = new Map(members.map((m) => [m.id, m]));
   state.categories = categories;
   state.palette = palette;
+  state.authEnabled = Boolean(authEnabled);
   ui.root.dataset.theme = settings.theme;
+  $('signOut').hidden = !state.authEnabled;
   renderPeople();
   fillSettings();
   renderCategoryChips();
@@ -652,6 +655,15 @@ async function saveSettings() {
   }
 }
 
+async function signOut() {
+  if (!confirm('Sign out of this device? You will need the household passcode again.')) return;
+  try {
+    await api.signOut();
+  } finally {
+    location.replace('/login');
+  }
+}
+
 function useLocation() {
   if (!navigator.geolocation) {
     toast('This browser has no location support', 'error');
@@ -719,6 +731,7 @@ function wire() {
   });
   $('useLocation').addEventListener('click', useLocation);
   $('saveSettings').addEventListener('click', saveSettings);
+  $('signOut').addEventListener('click', signOut);
 
   ui.jumpDate.addEventListener('change', () => {
     if (ui.jumpDate.value) loadAgenda(ui.jumpDate.value).catch((e) => toast(e.message, 'error'));

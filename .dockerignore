@@ -4,3 +4,8 @@ docs
 test
 scripts
 node_modules
+.env
+docs
+fly.toml
+render.yaml
+docker-compose.yml

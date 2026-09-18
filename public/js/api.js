@@ -7,6 +7,14 @@ async function request(path, { method = 'GET', body } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
 
+  // A session that expired while the page sat open should land on sign-in
+  // rather than throwing errors at whoever walks past the TV.
+  if (response.status === 401 && !location.pathname.startsWith('/login')) {
+    const next = encodeURIComponent(location.pathname + location.search);
+    location.replace(`/login?next=${next}`);
+    throw new Error('Signed out');
+  }
+
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     const error = new Error(payload.error || `Request failed (${response.status})`);
@@ -35,6 +43,8 @@ export const api = {
   deleteMember: (id) => request(`/api/members/${id}`, { method: 'DELETE' }),
 
   updateSettings: (settings) => request('/api/settings', { method: 'PATCH', body: settings }),
+
+  signOut: () => request('/api/session', { method: 'DELETE' }),
 };
 
 /**

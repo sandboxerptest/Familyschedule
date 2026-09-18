@@ -16,6 +16,7 @@ import { addDays, isDateKey, rangeKeys, todayKey } from './dates.js';
 import { expandEvents, groupByDate } from './recurrence.js';
 import { CATEGORIES, PALETTE, ValidationError, NotFoundError } from './store.js';
 import { WeatherService } from './weather.js';
+import { clientId, createAuth, isSecureRequest } from './auth.js';
 
 const PUBLIC_DIR = fileURLToPath(new URL('../public/', import.meta.url));
 const MAX_BODY_BYTES = 256 * 1024;
@@ -35,7 +36,11 @@ const MIME = {
   '.txt': 'text/plain; charset=utf-8',
 };
 
-export function createApp(store, { weather = new WeatherService(), publicDir = PUBLIC_DIR } = {}) {
+export function createApp(store, {
+  weather = new WeatherService(),
+  publicDir = PUBLIC_DIR,
+  auth = createAuth(),
+} = {}) {
   const clients = new Set();
 
   store.on('change', (change) => broadcast(clients, 'change', change));
@@ -43,8 +48,12 @@ export function createApp(store, { weather = new WeatherService(), publicDir = P
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     try {
+      if (auth.enabled && !isPublic(url.pathname) && !auth.isAuthenticated(req)) {
+        denyUnauthenticated(req, res, url);
+        return;
+      }
       if (url.pathname.startsWith('/api/')) {
-        await handleApi(req, res, url, { store, weather, clients });
+        await handleApi(req, res, url, { store, weather, clients, auth });
         return;
       }
       await serveStatic(req, res, url, publicDir);
@@ -69,8 +78,29 @@ export function createApp(store, { weather = new WeatherService(), publicDir = P
 
 // -- API ------------------------------------------------------------------
 
+/**
+ * Paths that stay open when a passcode is set: the sign-in page and the assets
+ * it needs, the session endpoints themselves, and the health probe platforms
+ * poll. None of them expose calendar data.
+ */
+function isPublic(pathname) {
+  if (pathname === '/api/session' || pathname === '/api/health') return true;
+  if (pathname === '/login') return true;
+  return /^\/(css|js|icons)\//.test(pathname) || pathname === '/manifest.webmanifest';
+}
+
+function denyUnauthenticated(req, res, url) {
+  if (url.pathname.startsWith('/api/')) {
+    sendJson(res, 401, { error: 'Sign in to continue' });
+    return;
+  }
+  const next = encodeURIComponent(url.pathname + url.search);
+  res.writeHead(302, { Location: `/login?next=${next}`, 'Cache-Control': 'no-store' });
+  res.end();
+}
+
 async function handleApi(req, res, url, ctx) {
-  const { store, weather, clients } = ctx;
+  const { store, weather, clients, auth } = ctx;
   const route = url.pathname.replace(/^\/api\/?/, '').replace(/\/$/, '');
   const segments = route ? route.split('/') : [];
   const method = req.method.toUpperCase();
@@ -88,6 +118,7 @@ async function handleApi(req, res, url, ctx) {
       members: store.members,
       categories: CATEGORIES,
       palette: PALETTE,
+      authEnabled: auth.enabled,
       today: todayKey(),
       serverTime: new Date().toISOString(),
     });
@@ -202,6 +233,43 @@ async function handleApi(req, res, url, ctx) {
     return;
   }
 
+  // The household passcode: POST to sign in, DELETE to sign out, GET to ask
+  // whether signing in is even a thing on this install.
+  if (segments[0] === 'session') {
+    if (method === 'GET') {
+      sendJson(res, 200, { required: auth.enabled, authenticated: auth.isAuthenticated(req) });
+      return;
+    }
+    if (method === 'POST') {
+      if (!auth.enabled) {
+        sendJson(res, 200, { ok: true, required: false });
+        return;
+      }
+      const body = await readJson(req);
+      const result = auth.attempt(body.pin, clientId(req));
+      if (!result.ok) {
+        const status = result.retryAfterSeconds ? 429 : 401;
+        const headers = result.retryAfterSeconds
+          ? { 'Retry-After': String(result.retryAfterSeconds) }
+          : undefined;
+        sendJson(res, status, {
+          error: result.retryAfterSeconds
+            ? `Too many attempts — try again in ${Math.ceil(result.retryAfterSeconds / 60)} min`
+            : 'That passcode is not right',
+        }, headers);
+        return;
+      }
+      res.setHeader('Set-Cookie', auth.cookie({ secure: isSecureRequest(req) }));
+      sendJson(res, 200, { ok: true });
+      return;
+    }
+    if (method === 'DELETE') {
+      res.setHeader('Set-Cookie', auth.clearCookie({ secure: isSecureRequest(req) }));
+      sendJson(res, 200, { ok: true });
+      return;
+    }
+  }
+
   if (segments[0] === 'health' && method === 'GET') {
     sendJson(res, 200, { ok: true, uptime: Math.round(process.uptime()) });
     return;
@@ -250,6 +318,7 @@ const PAGES = new Map([
   ['/tv', 'index.html'],
   ['/edit', 'edit.html'],
   ['/m', 'edit.html'],
+  ['/login', 'login.html'],
 ]);
 
 async function serveStatic(req, res, url, publicDir) {
@@ -312,12 +381,13 @@ async function serveStatic(req, res, url, publicDir) {
 
 // -- helpers --------------------------------------------------------------
 
-export function sendJson(res, status, payload) {
+export function sendJson(res, status, payload, extraHeaders) {
   const body = JSON.stringify(payload);
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(body),
     'Cache-Control': 'no-store',
+    ...extraHeaders,
   });
   res.end(body);
 }

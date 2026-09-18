@@ -1,0 +1,42 @@
+# Fly.io deployment.
+#   fly launch --no-deploy --copy-config    (once, to pick a name and region)
+#   fly volumes create hearth_data --size 1
+#   fly secrets set HEARTH_PIN=<household passcode>
+#   fly deploy
+#
+# The calendar lives on the volume, so redeploys never wipe it.
+
+app = "hearth"
+primary_region = "lhr"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "4321"
+  HEARTH_DATA = "/data/calendar.json"
+
+[[mounts]]
+  source = "hearth_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 4321
+  force_https = true
+  # A wall-mounted TV holds an open event-stream connection, so the machine
+  # would never idle anyway — keeping one running avoids a cold start when
+  # someone opens the editor on their phone.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    path = "/api/health"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

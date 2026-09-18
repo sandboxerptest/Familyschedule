@@ -1,0 +1,22 @@
+# Render deployment (Blueprint).
+#
+# A disk is required: without one the calendar is wiped on every deploy, and
+# disks are not available on Render's free instance type.
+services:
+  - type: web
+    name: hearth
+    runtime: node
+    plan: starter
+    region: frankfurt
+    buildCommand: 'echo "no build step"'
+    startCommand: node server/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: HEARTH_DATA
+        value: /var/hearth/calendar.json
+      - key: HEARTH_PIN
+        sync: false # set this in the dashboard; never commit it
+    disk:
+      name: hearth-data
+      mountPath: /var/hearth
+      sizeGB: 1

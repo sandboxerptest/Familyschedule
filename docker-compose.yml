@@ -1,0 +1,24 @@
+# Any box you own: a VPS, a NAS, the machine under the stairs.
+#   HEARTH_PIN=1234 docker compose up -d
+services:
+  hearth:
+    build: .
+    image: hearth
+    container_name: hearth
+    restart: unless-stopped
+    ports:
+      - '4321:4321'
+    environment:
+      # Leave empty on a trusted home network; set it for anything reachable
+      # from outside the house.
+      HEARTH_PIN: ${HEARTH_PIN:-}
+    volumes:
+      - hearth-data:/app/data
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:4321/api/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  hearth-data:

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en" data-theme="midnight">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Hearth — Sign in</title>
+  <meta name="color-scheme" content="dark light" />
+  <meta name="theme-color" content="#080b12" />
+  <meta name="robots" content="noindex" />
+  <link rel="icon" href="/icons/hearth.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/edit.css" />
+  <style>
+    body {
+      display: grid;
+      place-items: center;
+      min-height: 100dvh;
+      padding: var(--space-5);
+    }
+
+    .card {
+      width: min(24rem, 100%);
+      padding: var(--space-6) var(--space-5);
+      border-radius: var(--radius-xl);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      text-align: center;
+    }
+
+    .mark {
+      width: 3.5rem;
+      height: 3.5rem;
+      margin: 0 auto var(--space-4);
+      border-radius: var(--radius-lg);
+    }
+
+    .card h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .card p.lede {
+      margin-top: var(--space-2);
+      color: var(--text-dim);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    form {
+      margin-top: var(--space-5);
+      text-align: left;
+    }
+
+    #pin {
+      text-align: center;
+      letter-spacing: 0.35em;
+      font-size: 1.25rem;
+    }
+
+    .error {
+      display: none;
+      margin-top: var(--space-3);
+      padding: 0.7rem 0.9rem;
+      border-radius: var(--radius-md);
+      border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent);
+      color: var(--danger);
+      font-size: 0.88rem;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .error.is-shown {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <img class="mark" src="/icons/hearth.svg" alt="" />
+    <h1>Hearth</h1>
+    <p class="lede">Enter the household passcode to see the family calendar.</p>
+
+    <form id="form" novalidate>
+      <div class="field">
+        <label for="pin">Passcode</label>
+        <input
+          type="password"
+          id="pin"
+          name="pin"
+          autocomplete="current-password"
+          inputmode="numeric"
+          required
+          autofocus
+        />
+      </div>
+      <button class="btn btn-primary btn-block" type="submit" id="submit">Sign in</button>
+      <p class="error" id="error" role="alert"></p>
+    </form>
+  </main>
+
+  <script type="module" src="/js/login.js"></script>
+</body>
+</html>
