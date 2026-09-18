@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en" data-theme="midnight">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Hearth — Family Calendar</title>
+  <meta name="description" content="A family calendar built for the kitchen TV." />
+  <meta name="color-scheme" content="dark light" />
+  <link rel="icon" href="/icons/hearth.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/tv.css" />
+</head>
+<body>
+  <div class="tv" id="tv">
+    <header class="tv-header">
+      <div>
+        <p class="eyebrow tv-family" id="familyName">Family</p>
+        <h1 class="tv-date" id="todayLong">&nbsp;</h1>
+      </div>
+      <div class="tv-now">
+        <div class="tv-weather" id="weather" hidden></div>
+        <div class="tv-clock" id="clock" aria-live="off"></div>
+      </div>
+    </header>
+
+    <main class="tv-main" id="main" data-mode="agenda">
+      <section class="today-panel panel" id="todayPanel" aria-label="Today">
+        <div class="today-head">
+          <h2 id="todayHeading">Today</h2>
+          <span class="today-count" id="todayCount"></span>
+        </div>
+        <div class="spotlight" id="spotlight" hidden>
+          <p class="eyebrow" id="spotlightKind"></p>
+          <p class="title" id="spotlightTitle"></p>
+          <p class="meta" id="spotlightMeta"></p>
+        </div>
+        <ul class="today-list" id="todayList"></ul>
+
+        <section class="who-next" id="whoNext" aria-label="Next up for each person"></section>
+      </section>
+
+      <section class="board" id="board" aria-label="Upcoming days"></section>
+    </main>
+
+    <footer class="tv-footer">
+      <ul class="legend" id="legend"></ul>
+      <p class="tv-hint">Add or change plans at <strong id="editUrl">/edit</strong></p>
+      <span class="status" id="status" data-state="live">
+        <span class="dot"></span><span class="label"></span>
+      </span>
+    </footer>
+  </div>
+
+  <script type="module" src="/js/tv.js"></script>
+</body>
+</html>

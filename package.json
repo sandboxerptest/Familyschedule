@@ -1,0 +1,17 @@
+{
+  "name": "hearth",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Hearth — a family calendar for the kitchen TV, with a mobile editor.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test test/*.test.js",
+    "seed": "node server/seed.js"
+  },
+  "license": "MIT"
+}

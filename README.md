@@ -1,0 +1,189 @@
+# Hearth
+
+A family calendar that lives on the kitchen TV, with an editor built for the
+phone in your pocket.
+
+Open `/` on any TV browser and leave it there: a glanceable board of today and
+the week ahead, colour-coded per person, that updates itself the moment anyone
+changes anything. Open `/edit` on a phone to add the dentist appointment while
+you're still on the call.
+
+![The TV display](docs/screenshot-tv.png)
+
+<p align="center">
+  <img src="docs/screenshot-phone.png" alt="The phone editor" width="290">
+  <img src="docs/screenshot-phone-edit.png" alt="Adding an event" width="290">
+</p>
+
+| TV display (`/`) | Phone editor (`/edit`) |
+| --- | --- |
+| Today's agenda, what's happening now, what's next | Add, edit and delete in a couple of taps |
+| Six days ahead, or a full-week board | Repeat rules without the iCal jargon |
+| Per-person colours and a "next up" line for everyone | Colour-code the household |
+| Optional weather, live clock, two themes | Installs to the home screen as an app |
+
+## Why it's built this way
+
+- **No accounts, no cloud, no subscription.** Everything lives on one machine on
+  your own network, in a single JSON file you can back up or copy.
+- **No build step and no dependencies.** `node server/index.js` is the entire
+  install. It runs happily on a Raspberry Pi, an old laptop or a NAS.
+- **Live, not polled.** Saves are pushed to every screen over server-sent
+  events, so the TV updates while you're still holding the phone.
+- **Built for a screen you never touch.** The TV view survives wifi dropouts,
+  rolls over at midnight, trims busy days to fit, and drifts a few pixels every
+  eight minutes so a static layout can't ghost the panel.
+
+## Quick start
+
+```bash
+git clone <this repo> hearth
+cd hearth
+npm start
+```
+
+Then open:
+
+- `http://<machine>:4321/` — the TV display
+- `http://<machine>:4321/edit` — the phone editor
+
+The first run seeds a demo household so the screen isn't blank; delete the
+sample entries from the phone once you've had a look, or start clean with
+`HEARTH_SEED=off npm start`.
+
+### Put it on the TV
+
+Most TV browsers just need the URL bookmarked. For a dedicated screen:
+
+```bash
+# Raspberry Pi / any Linux box wired to the TV
+chromium-browser --kiosk --noerrdialogs --disable-infobars \
+  --incognito http://hearth.local:4321/
+```
+
+Press `F` for fullscreen, `V` to switch between the agenda and the week board,
+`R` to force a refresh, and `E` to jump to the editor. The mouse cursor fades
+out on its own.
+
+### Put it on a phone
+
+Open `/edit` in the phone's browser and use "Add to Home Screen". It installs as
+a standalone app — it is a proper web app manifest with icons, not a bookmark.
+
+## Configuration
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `PORT` | `4321` | Port to listen on |
+| `HOST` | `0.0.0.0` | Interface to bind |
+| `HEARTH_DATA` | `./data/calendar.json` | Where the calendar is stored |
+| `HEARTH_SEED` | on | Set to `off` to start with an empty calendar |
+
+Everything else — family name, theme, week start, 24-hour clock, view rotation
+and weather — is in the editor's Settings tab, so nobody has to edit a config
+file to change how the TV looks.
+
+Weather is off by default. Turn it on, drop in coordinates (or tap "use my
+current location") and it pulls a forecast from Open-Meteo: no key, no account,
+no bill. If the forecast is unreachable the strip simply disappears.
+
+## Run it as a service
+
+**systemd**
+
+```ini
+# /etc/systemd/system/hearth.service
+[Unit]
+Description=Hearth family calendar
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/hearth
+ExecStart=/usr/bin/node server/index.js
+Environment=PORT=4321
+Restart=always
+User=hearth
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**Docker**
+
+```bash
+docker build -t hearth .
+docker run -d --name hearth -p 4321:4321 -v hearth-data:/app/data hearth
+```
+
+## How it works
+
+```
+server/
+  index.js       entry point: config, startup, the URLs it prints
+  app.js         node:http router, static files, SSE stream
+  store.js       validation + atomic JSON persistence
+  recurrence.js  repeat rules expanded into per-day slices
+  dates.js       wall-clock date maths (no timezone surprises)
+  weather.js     optional Open-Meteo forecast, cached and fail-quiet
+public/
+  index.html     the TV display
+  edit.html      the phone editor
+  css/           design tokens (base) + one stylesheet per surface
+  js/            api client, formatting, and one module per surface
+```
+
+Times are stored as local wall-clock values (`2026-09-18` and `17:30`), never as
+UTC instants. A family calendar means "swimming at five", which stays at five
+through a daylight-saving change — converting through UTC would only introduce
+bugs nobody asked for.
+
+Repeat rules are a deliberate subset of RFC 5545: daily, weekly (on chosen
+weekdays), monthly by date, and yearly, each with an interval and an optional
+end date or count, plus per-date exceptions so you can skip one week without
+losing the series. That covers a fridge calendar without an iCal engine.
+
+### API
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/bootstrap` | Settings, people, categories, palette |
+| `GET` | `/api/calendar?from&to` | Occurrences expanded and grouped by day |
+| `GET` `POST` | `/api/events` | List / create |
+| `GET` `PATCH` `DELETE` | `/api/events/:id` | Read / update / delete |
+| `POST` | `/api/events/:id/skip` | Drop one date from a series |
+| `POST` | `/api/events/:id/end` | Stop a series from a date onwards |
+| `GET` `POST` | `/api/members` | List / create people |
+| `PATCH` `DELETE` | `/api/members/:id` | Update / remove a person |
+| `GET` `PATCH` | `/api/settings` | Display settings |
+| `GET` | `/api/weather` | Cached forecast, or `null` |
+| `GET` | `/api/stream` | Server-sent change events |
+| `GET` | `/api/health` | Liveness probe |
+
+## Tests
+
+```bash
+npm test
+```
+
+40 tests over the recurrence engine (intervals, weekday fan-out, month-end
+clamping, leap days, counts, exceptions, multi-day spans), the store
+(validation, atomic writes, migrations, series edits) and the HTTP API
+(including the live stream and path-traversal refusal). No test framework to
+install — it's `node --test`.
+
+## Security note
+
+Hearth has no authentication, by design: it is meant for a home network, the way
+a printer is. Do not expose it to the public internet. If you need it reachable
+from outside the house, put it behind a VPN or an authenticating reverse proxy.
+
+## Roadmap
+
+- Read-only iCal subscription feed (school and sports calendars)
+- A QR code on the TV that opens the editor on a phone
+- Chore rotation and a shared shopping list panel
+- Optional PIN on the editor for households with small "helpers"
+
+## License
+
+MIT — see [LICENSE](LICENSE).

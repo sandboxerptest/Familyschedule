@@ -1,0 +1,208 @@
+/* ==========================================================================
+   Hearth design tokens
+   Two themes: "midnight" (default — kitchens are dark at 6am and 10pm) and
+   "daylight". Everything scales from rem so the TV view can simply resize the
+   root font against the viewport and stay readable from across the room.
+   ========================================================================== */
+
+:root {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-numeric: ui-rounded, "SF Pro Rounded", var(--font-sans);
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.75rem;
+  --radius-pill: 999px;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  /* midnight */
+  --bg: #080b12;
+  --bg-glow-a: #16243d;
+  --bg-glow-b: #1d1630;
+  --surface: rgba(255, 255, 255, 0.045);
+  --surface-strong: rgba(255, 255, 255, 0.08);
+  --surface-solid: #121926;
+  --line: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --text: #f2f5fb;
+  --text-dim: #a7b2c6;
+  --text-faint: #6d798f;
+  --accent: #74a5ff;
+  --accent-soft: rgba(116, 165, 255, 0.16);
+  --danger: #ff6b6b;
+  --shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.45);
+  --today-glow: 0 0 0 1px rgba(116, 165, 255, 0.4), 0 0 2.5rem rgba(116, 165, 255, 0.18);
+  color-scheme: dark;
+}
+
+[data-theme='daylight'] {
+  --bg: #eef1f7;
+  --bg-glow-a: #dce6fb;
+  --bg-glow-b: #f3e8f7;
+  --surface: rgba(255, 255, 255, 0.78);
+  --surface-strong: #ffffff;
+  --surface-solid: #ffffff;
+  --line: rgba(20, 32, 54, 0.1);
+  --line-strong: rgba(20, 32, 54, 0.18);
+  --text: #131c2c;
+  --text-dim: #4e5d75;
+  --text-faint: #7b8aa1;
+  --accent: #2f6df0;
+  --accent-soft: rgba(47, 109, 240, 0.12);
+  --danger: #d53f3f;
+  --shadow: 0 1rem 2.5rem rgba(22, 35, 60, 0.12);
+  --today-glow: 0 0 0 1px rgba(47, 109, 240, 0.35), 0 0.75rem 2rem rgba(47, 109, 240, 0.14);
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--text);
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(90rem 50rem at 12% -12%, var(--bg-glow-a), transparent 60%),
+    radial-gradient(70rem 45rem at 105% 8%, var(--bg-glow-b), transparent 58%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, p, figure, ul, ol {
+  margin: 0;
+  padding: 0;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: 0;
+  background: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Components below set display on their own class, which would otherwise win
+   over the [hidden] attribute. */
+[hidden] {
+  display: none !important;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* -- shared primitives ---------------------------------------------------- */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(18px);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.3em 0.75em;
+  border-radius: var(--radius-pill);
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.dot {
+  display: inline-block;
+  vertical-align: baseline;
+  width: 0.62em;
+  height: 0.62em;
+  border-radius: 50%;
+  background: var(--dot, var(--accent));
+  flex: none;
+  box-shadow: 0 0 0 0.16em color-mix(in srgb, var(--dot, var(--accent)) 25%, transparent);
+}
+
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 2em;
+  height: 2em;
+  border-radius: 50%;
+  font-size: 0.8em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #0a0d14;
+  background: var(--avatar, var(--accent));
+}
+
+.eyebrow {
+  font-size: 0.75em;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* Category glyphs are plain text so nothing has to load from the network. */
+.glyph {
+  font-variant-emoji: text;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

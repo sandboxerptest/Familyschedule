@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en" data-theme="midnight">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Hearth — Edit</title>
+  <meta name="description" content="Add and edit what's on the family calendar." />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="theme-color" content="#080b12" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icons/hearth.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icons/hearth-192.png" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/edit.css" />
+</head>
+<body>
+  <header class="appbar">
+    <div>
+      <h1 id="viewTitle">Schedule</h1>
+      <p class="sub" id="viewSub">Loading…</p>
+    </div>
+    <a class="icon-btn" href="/" title="Open the TV display" aria-label="Open the TV display">📺</a>
+  </header>
+
+  <main class="shell">
+    <!-- Schedule ------------------------------------------------------- -->
+    <section class="view is-active" id="view-schedule" aria-label="Schedule">
+      <div class="field">
+        <label for="jumpDate">Showing from</label>
+        <input type="date" id="jumpDate" />
+      </div>
+      <div id="agenda"></div>
+    </section>
+
+    <!-- People --------------------------------------------------------- -->
+    <section class="view" id="view-people" aria-label="People">
+      <div class="section-title"><h2>Everyone in the house</h2></div>
+      <div id="peopleList"></div>
+      <button class="btn btn-block" id="addPerson" type="button">+ Add someone</button>
+      <p class="hint" style="margin-top: 1rem">
+        Each person gets a colour. Events are tinted with the colour of the first
+        person tagged, which is what makes the TV readable from across the room.
+      </p>
+    </section>
+
+    <!-- Settings ------------------------------------------------------- -->
+    <section class="view" id="view-settings" aria-label="Settings">
+      <div class="section-title"><h2>Display</h2></div>
+
+      <div class="field">
+        <label for="familyNameInput">Family name</label>
+        <input type="text" id="familyNameInput" maxlength="40" placeholder="Our Family" />
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="themeInput">Theme</label>
+          <select id="themeInput">
+            <option value="midnight">Midnight</option>
+            <option value="daylight">Daylight</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="weekStartInput">Week starts</label>
+          <select id="weekStartInput">
+            <option value="1">Monday</option>
+            <option value="0">Sunday</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <button class="toggle" id="clockToggle" type="button" aria-pressed="false">
+          <span>24-hour clock</span>
+          <span class="switch" aria-checked="false"></span>
+        </button>
+      </div>
+
+      <div class="field">
+        <label for="rotateInput">Auto-rotate TV views</label>
+        <select id="rotateInput">
+          <option value="0">Off — keep the agenda view</option>
+          <option value="20">Every 20 seconds</option>
+          <option value="45">Every 45 seconds</option>
+          <option value="90">Every 90 seconds</option>
+        </select>
+      </div>
+
+      <div class="section-title"><h2>Weather</h2></div>
+
+      <div class="field">
+        <button class="toggle" id="weatherToggle" type="button" aria-pressed="false">
+          <span>Show weather on the TV</span>
+          <span class="switch" aria-checked="false"></span>
+        </button>
+      </div>
+
+      <div id="weatherFields" hidden>
+        <div class="field">
+          <label for="weatherLabel">Place name</label>
+          <input type="text" id="weatherLabel" maxlength="40" placeholder="Home" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="latInput">Latitude</label>
+            <input type="text" inputmode="decimal" id="latInput" placeholder="51.5072" />
+          </div>
+          <div class="field">
+            <label for="lonInput">Longitude</label>
+            <input type="text" inputmode="decimal" id="lonInput" placeholder="-0.1276" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="unitInput">Units</label>
+          <select id="unitInput">
+            <option value="celsius">Celsius</option>
+            <option value="fahrenheit">Fahrenheit</option>
+          </select>
+        </div>
+        <button class="btn btn-block" id="useLocation" type="button">Use my current location</button>
+        <p class="hint" style="margin-top: 0.75rem">
+          Forecasts come from Open-Meteo — no account, no API key, nothing to pay for.
+        </p>
+      </div>
+
+      <div class="section-title"><h2>This install</h2></div>
+      <p class="hint">
+        TV display: <a class="linkish" id="tvLink" href="/">/</a><br />
+        Everything is stored on this machine in <code>data/calendar.json</code>.
+      </p>
+
+      <button class="btn btn-primary btn-block" id="saveSettings" type="button" style="margin-top: 1.25rem">
+        Save settings
+      </button>
+    </section>
+  </main>
+
+  <button class="fab" id="fab" type="button" aria-label="Add an event">+</button>
+
+  <nav class="tabbar" role="tablist" aria-label="Sections">
+    <button class="tab" type="button" role="tab" data-view="schedule" aria-selected="true">
+      <span class="glyph">🗓️</span>Schedule
+    </button>
+    <button class="tab" type="button" role="tab" data-view="people" aria-selected="false">
+      <span class="glyph">👥</span>People
+    </button>
+    <button class="tab" type="button" role="tab" data-view="settings" aria-selected="false">
+      <span class="glyph">⚙️</span>Settings
+    </button>
+  </nav>
+
+  <div class="scrim" id="scrim"></div>
+
+  <!-- Event sheet ------------------------------------------------------ -->
+  <section class="sheet" id="eventSheet" role="dialog" aria-modal="true" aria-labelledby="eventSheetTitle">
+    <div class="grabber"></div>
+    <div class="sheet-head">
+      <h2 id="eventSheetTitle">New event</h2>
+      <button class="icon-btn" type="button" data-close aria-label="Close">✕</button>
+    </div>
+
+    <form id="eventForm" novalidate>
+      <div class="field">
+        <label for="titleInput">What is it?</label>
+        <input type="text" id="titleInput" maxlength="120" placeholder="Swimming lessons" required />
+      </div>
+
+      <div class="field">
+        <span class="label">Who is it for?</span>
+        <div class="chipset" id="memberChips"></div>
+      </div>
+
+      <div class="field">
+        <label for="dateInput">Date</label>
+        <input type="date" id="dateInput" required />
+      </div>
+
+      <div class="field">
+        <button class="toggle" id="allDayToggle" type="button" aria-pressed="false">
+          <span>All day</span>
+          <span class="switch" aria-checked="false"></span>
+        </button>
+      </div>
+
+      <div class="field-row" id="timeFields">
+        <div class="field">
+          <label for="startTimeInput">Starts</label>
+          <input type="time" id="startTimeInput" step="300" />
+        </div>
+        <div class="field">
+          <label for="endTimeInput">Ends</label>
+          <input type="time" id="endTimeInput" step="300" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="endDateInput">Runs until <span style="text-transform: none">(optional)</span></label>
+        <input type="date" id="endDateInput" />
+      </div>
+
+      <div class="field">
+        <span class="label">Type</span>
+        <div class="chipset" id="categoryChips"></div>
+      </div>
+
+      <div class="field">
+        <label for="repeatInput">Repeat</label>
+        <select id="repeatInput">
+          <option value="none">Doesn't repeat</option>
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+          <option value="yearly">Yearly</option>
+        </select>
+      </div>
+
+      <div id="repeatDetail" hidden>
+        <p class="hint" id="repeatSummary" style="margin: -0.5rem 0 1rem"></p>
+        <div class="field" id="weekdayField">
+          <span class="label">On these days</span>
+          <div class="weekday-picker" id="weekdayPicker"></div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="intervalInput">Every</label>
+            <select id="intervalInput">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="untilInput">Until <span style="text-transform: none">(optional)</span></label>
+            <input type="date" id="untilInput" />
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="locationInput">Where <span style="text-transform: none">(optional)</span></label>
+        <input type="text" id="locationInput" maxlength="120" placeholder="Leisure centre" />
+      </div>
+
+      <div class="field">
+        <label for="notesInput">Notes <span style="text-transform: none">(optional)</span></label>
+        <textarea id="notesInput" maxlength="280" placeholder="Bring goggles"></textarea>
+      </div>
+
+      <button class="btn btn-primary btn-block" type="submit" id="saveEvent">Save event</button>
+
+      <div id="eventActions" hidden style="margin-top: 0.75rem">
+        <div class="btn-row" id="seriesActions" hidden>
+          <button class="btn btn-ghost" type="button" id="skipOccurrence">Skip this day</button>
+          <button class="btn btn-ghost" type="button" id="endSeries">End from here</button>
+        </div>
+        <button class="btn btn-danger btn-block" type="button" id="deleteEvent" style="margin-top: 0.75rem">
+          Delete
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Person sheet ----------------------------------------------------- -->
+  <section class="sheet" id="personSheet" role="dialog" aria-modal="true" aria-labelledby="personSheetTitle">
+    <div class="grabber"></div>
+    <div class="sheet-head">
+      <h2 id="personSheetTitle">Add someone</h2>
+      <button class="icon-btn" type="button" data-close aria-label="Close">✕</button>
+    </div>
+
+    <form id="personForm" novalidate>
+      <div class="field">
+        <label for="personName">Name</label>
+        <input type="text" id="personName" maxlength="40" placeholder="Ava" required />
+      </div>
+      <div class="field">
+        <span class="label">Colour</span>
+        <div class="swatches" id="colorSwatches"></div>
+      </div>
+      <button class="btn btn-primary btn-block" type="submit">Save</button>
+      <button class="btn btn-danger btn-block" type="button" id="deletePerson" hidden style="margin-top: 0.75rem">
+        Remove from the family
+      </button>
+    </form>
+  </section>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="/js/edit.js"></script>
+</body>
+</html>
