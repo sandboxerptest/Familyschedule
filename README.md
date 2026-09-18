@@ -198,6 +198,34 @@ TLS is expected to be terminated by the platform or your reverse proxy; when it
 is, the session cookie is automatically marked `Secure` (Hearth reads
 `X-Forwarded-Proto`).
 
+### Render (what this repo is set up for)
+
+`render.yaml` in the repo root is a complete Blueprint. In the Render dashboard:
+
+1. **New → Blueprint**, pick this repository, and let it read `render.yaml`.
+2. It will prompt for `HEARTH_PIN` — that's the household passcode everyone
+   types once per device. Anything you'd be happy saying out loud in the
+   kitchen; it is not protecting state secrets, but make it longer than four
+   digits if the URL is public.
+3. **Apply**. First deploy takes a couple of minutes, and the calendar lands at
+   `https://hearth-<something>.onrender.com`.
+
+Worth knowing before you click:
+
+- **It isn't free.** The blueprint asks for a 1 GB disk, and Render can't mount
+  a disk on a free instance, so it specifies the `starter` plan (~$7/month plus
+  a few cents for the disk). Free instances also sleep, which is wrong for a
+  screen that is supposed to be glanceable at 7am.
+- **`region:` is set to `frankfurt`.** Change it in `render.yaml` if you're
+  closer to `oregon`, `ohio`, `virginia` or `singapore`.
+- **`branch:` is set explicitly.** If you rename or merge the branch, update
+  that line or Render will keep deploying the old one.
+- **One instance, on purpose.** The calendar is a single JSON file on the disk;
+  a second instance would quietly keep a second copy.
+
+Point a custom domain at it from the dashboard if you'd rather not read a
+`.onrender.com` address out to your family — Render issues the certificate.
+
 ### Fly.io
 
 ```bash
@@ -206,12 +234,6 @@ fly volumes create hearth_data --size 1
 fly secrets set HEARTH_PIN=<passcode>
 fly deploy
 ```
-
-### Render
-
-Point a Blueprint at `render.yaml`, then set `HEARTH_PIN` in the dashboard. The
-config asks for a 1 GB disk — Render's free instances can't mount one, so the
-starter plan is the floor for a calendar that remembers anything.
 
 ### Your own box
 

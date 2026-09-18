@@ -1,21 +1,34 @@
-# Render deployment (Blueprint).
+# Render Blueprint — https://render.com/docs/blueprint-spec
 #
-# A disk is required: without one the calendar is wiped on every deploy, and
-# disks are not available on Render's free instance type.
+# New > Blueprint in the Render dashboard, point it at this repo, and set
+# HEARTH_PIN when it asks. Everything else is below.
+#
+# Two things are deliberate and load-bearing:
+#   * the disk — the calendar is a JSON file, so without a mounted disk every
+#     deploy would hand the family a blank week;
+#   * one instance — that file is the source of truth, and a second instance
+#     would quietly keep its own copy.
 services:
   - type: web
     name: hearth
     runtime: node
-    plan: starter
-    region: frankfurt
-    buildCommand: 'echo "no build step"'
+    plan: starter # a disk cannot be mounted on Render's free instances
+    region: frankfurt # oregon / ohio / virginia / singapore are the others
+    branch: claude/kitchen-calendar-tv-app-v2dyuc
+    numInstances: 1
+    buildCommand: npm install --omit=dev # no dependencies; this is a formality
     startCommand: node server/index.js
     healthCheckPath: /api/health
+    autoDeploy: true
     envVars:
+      - key: NODE_VERSION
+        value: '22'
       - key: HEARTH_DATA
         value: /var/hearth/calendar.json
+      # The household passcode. Marked sync:false so it is never committed —
+      # Render prompts for it when the blueprint is created.
       - key: HEARTH_PIN
-        sync: false # set this in the dashboard; never commit it
+        sync: false
     disk:
       name: hearth-data
       mountPath: /var/hearth
